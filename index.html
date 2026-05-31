@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Метро Санкт-Петербурга — интерактивная карта с метками</title>
+    <title>Метро Санкт-Петербурга — с сохранением меток</title>
     <style>
         * {
             margin: 0;
@@ -85,6 +85,16 @@
             cursor: pointer;
         }
 
+        .save-status {
+            background: #27ae60;
+            border: none;
+            color: white;
+            padding: 5px 14px;
+            border-radius: 30px;
+            margin-left: 12px;
+            cursor: pointer;
+        }
+
         .station-card {
             background: #f8f9fc;
             border-radius: 16px;
@@ -157,22 +167,24 @@
     <div class="map-container">
         <div class="title">
             <h1>🚇 Метро Санкт-Петербурга</h1>
-            <p>📌 Клик по станции — поставить/убрать метку | ℹ️ Shift + клик — информация</p>
+            <p>📌 Клик по станции — поставить/убрать метку | 💾 Метки сохраняются автоматически</p>
         </div>
         <canvas id="metroCanvas" width="1000" height="760" style="width:100%; height:auto; aspect-ratio:1000/760"></canvas>
         <div class="info-panel">
             ✅ <span id="markCount">0</span> станций отмечено
             <button class="reset-btn" id="resetMarksBtn">🗑 Снять все</button>
+            <button class="save-status" id="exportMarksBtn">📤 Экспорт списка</button>
         </div>
     </div>
 
     <div class="sidebar">
         <h3>📋 Список станций</h3>
         <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск...">
+        <div class="stats-badge" id="sidebarStats"></div>
         <div id="stationsList"></div>
     </div>
 </div>
-<footer>Нажмите на станцию на карте — появится зелёная галочка ✅</footer>
+<footer>💾 Ваши отметки сохраняются в браузере и не исчезают даже после перезагрузки страницы!</footer>
 
 <script>
     (function() {
@@ -261,9 +273,36 @@
             { from: "Спасская", to: "Достоевская", line: "purple" }
         ];
 
-        // ======================= ЛОГИКА РАБОТЫ =======================
-        let markedStations = new Set();
+        // ======================= РАБОТА С LOCALSTORAGE (СОХРАНЕНИЕ МЕТОК) =======================
         
+        // Ключ для хранения в localStorage
+        const STORAGE_KEY = 'metro_spb_marks';
+        
+        // Загрузка сохранённых меток
+        function loadMarksFromStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const marksArray = JSON.parse(saved);
+                    return new Set(marksArray);
+                } catch(e) {
+                    console.error('Ошибка загрузки меток:', e);
+                    return new Set();
+                }
+            }
+            return new Set();
+        }
+        
+        // Сохранение меток в localStorage
+        function saveMarksToStorage(marksSet) {
+            const marksArray = Array.from(marksSet);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(marksArray));
+        }
+        
+        // Инициализируем метки из localStorage
+        let markedStations = loadMarksFromStorage();
+        
+        // ======================= ОТРИСОВКА КАРТЫ =======================
         const canvas = document.getElementById('metroCanvas');
         const ctx = canvas.getContext('2d');
         const markCountSpan = document.getElementById('markCount');
@@ -342,8 +381,34 @@
             } else {
                 markedStations.add(stationName);
             }
+            // Сохраняем в localStorage
+            saveMarksToStorage(markedStations);
             renderMap();
             updateSidebar();
+        }
+        
+        function resetAllMarks() {
+            markedStations.clear();
+            saveMarksToStorage(markedStations);
+            renderMap();
+            updateSidebar();
+        }
+        
+        function exportMarksList() {
+            const marksArray = Array.from(markedStations);
+            if (marksArray.length === 0) {
+                alert("Нет отмеченных станций");
+                return;
+            }
+            const text = marksArray.join("\n");
+            // Создаём временный элемент для копирования
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert(`✅ Список отмеченных станций скопирован в буфер обмена!\n\n${marksArray.length} станций:\n${marksArray.join(", ")}`);
         }
         
         // Обработчик клика по canvas
@@ -369,12 +434,9 @@
             }
         });
         
-        // Сброс всех меток
-        document.getElementById('resetMarksBtn').addEventListener('click', () => {
-            markedStations.clear();
-            renderMap();
-            updateSidebar();
-        });
+        // Кнопки
+        document.getElementById('resetMarksBtn').addEventListener('click', resetAllMarks);
+        document.getElementById('exportMarksBtn').addEventListener('click', exportMarksList);
         
         // Боковая панель
         function updateSidebar() {
@@ -384,12 +446,15 @@
                 s.district.toLowerCase().includes(searchValue)
             );
             
+            document.getElementById('sidebarStats').innerHTML = `📌 Отмечено: ${markedStations.size} | Всего: ${stations.length}`;
+            
             let html = '';
             for (let st of filtered) {
                 const lineName = { red: "Красная", blue: "Синяя", green: "Зелёная", purple: "Фиолетовая", orange: "Красносельская" }[st.line];
+                const isMarked = markedStations.has(st.name);
                 html += `
-                    <div class="station-card" style="border-left-color: ${COLORS[st.line]}" onclick="window.dispatchEvent(new CustomEvent('selectStation', {detail: '${st.name}'}))">
-                        <h4>${st.name} ${st.closed ? '⛔' : ''} ${markedStations.has(st.name) ? '✅' : ''}</h4>
+                    <div class="station-card" style="border-left-color: ${COLORS[st.line]}" onclick="window.dispatchEvent(new CustomEvent('selectStation', {detail: '${st.name.replace(/'/g, "\\'")}'}))">
+                        <h4>${st.name} ${st.closed ? '⛔' : ''} ${isMarked ? '✅' : ''}</h4>
                         <p>📅 ${st.date} | ${st.type}</p>
                         <p>📍 ${st.district} | ${lineName} линия</p>
                         <span class="line-badge" style="background: ${COLORS[st.line]}; color: white">${lineName}</span>
@@ -410,6 +475,11 @@
         // Запуск
         renderMap();
         updateSidebar();
+        
+        // Сообщение о восстановлении меток
+        if (markedStations.size > 0) {
+            console.log(`✅ Восстановлено ${markedStations.size} сохранённых меток`);
+        }
     })();
 </script>
 </body>
