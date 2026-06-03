@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Метро СПб — фиксированные подписи (только код)</title>
+    <title>Метро СПб — общие метки для всех пользователей</title>
     <style>
         * {
             margin: 0;
@@ -100,14 +100,22 @@
             font-size: 13px;
         }
 
-        .reset-btn {
+        .reset-btn, .sync-btn {
             border: none;
             color: white;
             padding: 5px 14px;
             border-radius: 30px;
             margin-left: 12px;
             cursor: pointer;
-            background: #c0392b;
+        }
+
+        .reset-btn { background: #c0392b; }
+        .sync-btn { background: #2980b9; }
+
+        .status {
+            font-size: 11px;
+            margin-top: 8px;
+            color: #2c3e50;
         }
 
         .station-card {
@@ -163,6 +171,26 @@
             color: white;
         }
 
+        .sync-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2ecc71;
+            margin-left: 8px;
+            box-shadow: 0 0 3px #2ecc71;
+        }
+
+        .sync-indicator.syncing {
+            background: #f39c12;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
         footer {
             text-align: center;
             margin-top: 20px;
@@ -181,7 +209,7 @@
     <div class="map-container">
         <div class="title">
             <h1>🚇 Петербургский метрополитен</h1>
-            <div class="subtitle">Фиксированные подписи (заданы в коде)</div>
+            <div class="subtitle">🌍 Общие метки — их видят все пользователи!</div>
             <div class="legend">
                 <span><span class="legend-color" style="background:#E31E24;"></span> Кировско-Выборгская</span>
                 <span><span class="legend-color" style="background:#0050A0;"></span> Московско-Петроградская</span>
@@ -192,9 +220,11 @@
         </div>
         <canvas id="metroCanvas" width="1100" height="850" style="width:100%; height:auto; aspect-ratio:1100/850"></canvas>
         <div class="info-panel">
-            ✅ <span id="markCount">0</span> отмеченных станций
+            ✅ <span id="markCount">0</span> общих отметок
+            <button class="sync-btn" id="syncBtn">🔄 Синхронизировать</button>
             <button class="reset-btn" id="resetMarksBtn">🗑 Снять все метки</button>
         </div>
+        <div class="status" id="syncStatus"></div>
     </div>
 
     <div class="sidebar">
@@ -204,9 +234,21 @@
         <div id="stationsList"></div>
     </div>
 </div>
-<footer>💾 Клик по станции — поставить/убрать зелёную метку. Положение подписей задано в коде и одинаково для всех.</footer>
+<footer>🌍 Метки сохраняются на сервере — их видят все пользователи. Клик по станции — поставить/убрать галочку.</footer>
 
 <script>
+    // ======================= НАСТРОЙКИ JSONBin.io =======================
+    // ⚠️ ВАЖНО: Замените YOUR_BIN_ID и YOUR_API_KEY на свои!
+    // Получить можно бесплатно на https://jsonbin.io
+    const JSONBIN_BIN_ID = "6a2093caf5f4af5e29b49e90";      // Вставьте ID вашего бин
+    const JSONBIN_API_KEY = "$2a$10$3ttyQs4xOjj7ktzv3WTPI.4mpvzkSXEYc5u.dth7WgLwXDWFOlIqC";    // Вставьте ваш API ключ
+    
+    // Базовые заголовки для запросов к JSONBin
+    const headers = {
+        "Content-Type": "application/json",
+        "X-Master-Key": JSONBIN_API_KEY
+    };
+    
     // ======================= ЦВЕТА ЛИНИЙ =======================
     const COLORS = {
         red:    "#E31E24",
@@ -216,8 +258,7 @@
         purple: "#8B5A9F"
     };
     
-    // ======================= ВСЕ СТАНЦИИ С КООРДИНАТАМИ =======================
-    // textOffsetX, textOffsetY — смещение текста относительно станции (x, y)
+    // ======================= ВСЕ СТАНЦИИ =======================
     const stations = [
         // Линия 1 (Красная)
         { name: "Девяткино", line: "red", x: 680, y: 35, transfer: false, textOffsetX: 12, textOffsetY: 4 },
@@ -274,7 +315,7 @@
         { name: "Обухово", line: "green", x: 750, y: 535, transfer: false, textOffsetX: -70, textOffsetY: 4 },
         { name: "Рыбацкое", line: "green", x: 750, y: 570, transfer: false, textOffsetX: -70, textOffsetY: 4 },
         
-        // Линия 4 (Оранжевая) — Горный институт соединён напрямую со Спасской
+        // Линия 4 (Оранжевая)
         { name: "Горный институт", line: "orange", x: 300, y: 395, transfer: false, textOffsetX: -30, textOffsetY: 15 },
         { name: "Спасская", line: "orange", x: 490, y: 395, transfer: true, textOffsetX: 20, textOffsetY: 10 },
         { name: "Достоевская", line: "orange", x: 610, y: 395, transfer: true, textOffsetX: -30, textOffsetY: 15 },
@@ -319,26 +360,132 @@
         }
     }
     
-    // ======================= ХРАНЕНИЕ МЕТОК =======================
-    const MARKS_KEY = 'metro_spb_my_marks';
+    // ======================= ОБЩИЕ МЕТКИ (JSONBin.io) =======================
+    let sharedMarks = new Set();
+    let isSyncing = false;
+    let pendingSave = null;
+    let lastSaveTime = 0;
+    const SAVE_DELAY = 500;
     
-    function loadMarks() {
-        const saved = localStorage.getItem(MARKS_KEY);
-        if (saved) {
-            try {
-                return new Set(JSON.parse(saved));
-            } catch(e) {
-                return new Set();
+    const syncStatus = document.getElementById('syncStatus');
+    const syncBtn = document.getElementById('syncBtn');
+    
+    function showStatus(text, isError = false) {
+        syncStatus.textContent = text;
+        syncStatus.style.color = isError ? '#c0392b' : '#2c3e50';
+        setTimeout(() => {
+            if (syncStatus.textContent === text) {
+                syncStatus.textContent = '✅ Синхронизировано';
+                setTimeout(() => {
+                    if (syncStatus.textContent === '✅ Синхронизировано') {
+                        syncStatus.textContent = '';
+                    }
+                }, 2000);
             }
+        }, 3000);
+    }
+    
+    // Загрузка меток с сервера
+    async function loadSharedMarks() {
+        if (JSONBIN_BIN_ID === "YOUR_BIN_ID") {
+            console.warn("JSONBin не настроен. Используются локальные метки.");
+            return false;
         }
-        return new Set();
+        
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                headers: { "X-Master-Key": JSONBIN_API_KEY }
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            const marksArray = data.record?.marks || [];
+            sharedMarks = new Set(marksArray);
+            
+            // Обновляем только существующие станции
+            const validMarks = new Set();
+            for (let mark of sharedMarks) {
+                if (stations.some(s => s.name === mark)) {
+                    validMarks.add(mark);
+                }
+            }
+            sharedMarks = validMarks;
+            
+            renderMap();
+            updateSidebar();
+            showStatus(`✅ Загружено ${sharedMarks.size} общих меток`);
+            return true;
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            showStatus('⚠️ Ошибка загрузки меток', true);
+            return false;
+        }
     }
     
-    function saveMarks(marksSet) {
-        localStorage.setItem(MARKS_KEY, JSON.stringify(Array.from(marksSet)));
+    // Сохранение меток на сервер
+    async function saveSharedMarks() {
+        if (JSONBIN_BIN_ID === "YOUR_BIN_ID") {
+            console.warn("JSONBin не настроен. Метки не сохранены.");
+            return false;
+        }
+        
+        const now = Date.now();
+        if (now - lastSaveTime < SAVE_DELAY) {
+            if (pendingSave) clearTimeout(pendingSave);
+            pendingSave = setTimeout(() => saveSharedMarks(), SAVE_DELAY);
+            return;
+        }
+        
+        try {
+            const marksArray = Array.from(sharedMarks);
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify({ marks: marksArray })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            lastSaveTime = now;
+            showStatus(`💾 Сохранено ${sharedMarks.size} меток`);
+            return true;
+        } catch (error) {
+            console.error('Ошибка сохранения:', error);
+            showStatus('⚠️ Ошибка сохранения меток', true);
+            return false;
+        }
     }
     
-    let markedStations = loadMarks();
+    // Переключение метки (общая для всех)
+    async function toggleSharedMark(stationName) {
+        if (sharedMarks.has(stationName)) {
+            sharedMarks.delete(stationName);
+        } else {
+            sharedMarks.add(stationName);
+        }
+        
+        renderMap();
+        updateSidebar();
+        
+        // Сохраняем на сервер
+        await saveSharedMarks();
+    }
+    
+    async function resetAllSharedMarks() {
+        if (!confirm('Снять ВСЕ метки для ВСЕХ пользователей?')) return;
+        
+        sharedMarks.clear();
+        renderMap();
+        updateSidebar();
+        await saveSharedMarks();
+        showStatus('✅ Все метки удалены');
+    }
+    
+    async function forceSync() {
+        showStatus('🔄 Синхронизация...');
+        await loadSharedMarks();
+    }
     
     // ======================= ОТРИСОВКА КАРТЫ =======================
     const canvas = document.getElementById('metroCanvas');
@@ -396,10 +543,8 @@
         
         // Рисуем станции
         for (let st of stations) {
-            // Пропускаем, если имя пустое (на случай, если осталась)
             if (!st.name) continue;
             
-            // Основной кружок
             ctx.beginPath();
             ctx.arc(st.x, st.y, 6.5, 0, 2 * Math.PI);
             ctx.fillStyle = COLORS[st.line];
@@ -408,17 +553,14 @@
             ctx.lineWidth = 2;
             ctx.stroke();
             
-            // Если пересадочная — рисуем двойное кольцо
             if (st.transfer) {
                 drawTransferRing(st.x, st.y);
             }
             
-            // Если отмечена — рисуем зелёную галочку
-            if (markedStations.has(st.name)) {
+            if (sharedMarks.has(st.name)) {
                 drawCheckmark(st.x, st.y);
             }
             
-            // Подпись с фиксированным смещением из кода
             ctx.font = '10px "Segoe UI", "Roboto"';
             ctx.fillStyle = '#1f2d3d';
             const offsetX = st.textOffsetX !== undefined ? st.textOffsetX : 12;
@@ -426,28 +568,8 @@
             ctx.fillText(st.name.length > 22 ? st.name.slice(0, 20) + "…" : st.name, st.x + offsetX, st.y + offsetY);
         }
         
-        markCountSpan.innerText = markedStations.size;
-        document.getElementById('sidebarStats').innerHTML = `📌 Отмечено: ${markedStations.size} | Всего: ${stations.length}`;
-    }
-    
-    function toggleMark(stationName) {
-        if (markedStations.has(stationName)) {
-            markedStations.delete(stationName);
-        } else {
-            markedStations.add(stationName);
-        }
-        saveMarks(markedStations);
-        renderMap();
-        updateSidebar();
-    }
-    
-    function resetAllMarks() {
-        if (confirm('Снять все ваши метки?')) {
-            markedStations.clear();
-            saveMarks(markedStations);
-            renderMap();
-            updateSidebar();
-        }
+        markCountSpan.innerText = sharedMarks.size;
+        document.getElementById('sidebarStats').innerHTML = `🌍 Общих меток: ${sharedMarks.size} | Всего: ${stations.length}`;
     }
     
     // ======================= ОБРАБОТЧИКИ =======================
@@ -478,13 +600,12 @@
             const dx = mouse.x - st.x;
             const dy = mouse.y - st.y;
             if (Math.hypot(dx, dy) < 12) {
-                toggleMark(st.name);
+                toggleSharedMark(st.name);
                 return;
             }
         }
     });
     
-    // Поддержка касаний для мобильных
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         if (e.touches.length === 1) {
@@ -494,14 +615,15 @@
                 const dx = mouse.x - st.x;
                 const dy = mouse.y - st.y;
                 if (Math.hypot(dx, dy) < 12) {
-                    toggleMark(st.name);
+                    toggleSharedMark(st.name);
                     return;
                 }
             }
         }
     });
     
-    document.getElementById('resetMarksBtn').addEventListener('click', resetAllMarks);
+    document.getElementById('resetMarksBtn').addEventListener('click', resetAllSharedMarks);
+    syncBtn.addEventListener('click', forceSync);
     
     function updateSidebar() {
         const searchValue = document.getElementById('searchInput').value.toLowerCase();
@@ -512,7 +634,7 @@
         let html = '';
         for (let st of filtered) {
             if (!st.name) continue;
-            const isMarked = markedStations.has(st.name);
+            const isMarked = sharedMarks.has(st.name);
             html += `
                 <div class="station-card" style="border-left-color: ${COLORS[st.line]}" onclick="window.dispatchEvent(new CustomEvent('selectStation', {detail: '${st.name.replace(/'/g, "\\'")}'}))">
                     <h4>${st.name} ${isMarked ? '✅' : '◻️'} ${st.transfer ? '🔄' : ''}</h4>
@@ -524,12 +646,13 @@
         document.getElementById('stationsList').innerHTML = html || '<p>🚫 Ничего не найдено</p>';
     }
     
-    window.addEventListener('selectStation', (e) => toggleMark(e.detail));
+    window.addEventListener('selectStation', (e) => toggleSharedMark(e.detail));
     document.getElementById('searchInput').addEventListener('input', updateSidebar);
     
     // Запуск
     renderMap();
     updateSidebar();
+    loadSharedMarks();
 </script>
 </body>
 </html>
