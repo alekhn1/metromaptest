@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Метро Санкт-Петербурга — с сохранением меток</title>
+    <title>Метро СПб — фиксированные подписи (только код)</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
         }
 
         body {
@@ -30,19 +31,19 @@
             min-width: 650px;
             background: #fef9e8;
             border-radius: 28px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
             padding: 20px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
         }
 
         .sidebar {
             flex: 1;
-            min-width: 280px;
+            min-width: 300px;
             background: white;
             border-radius: 28px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
             padding: 20px;
             overflow-y: auto;
             max-height: 85vh;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
         }
 
         canvas {
@@ -61,8 +62,32 @@
         }
 
         .title h1 {
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             color: #1e3c5c;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #5a6e7c;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin: 10px 0;
+            font-size: 11px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
         }
 
         .info-panel {
@@ -76,30 +101,20 @@
         }
 
         .reset-btn {
+            border: none;
+            color: white;
+            padding: 5px 14px;
+            border-radius: 30px;
+            margin-left: 12px;
+            cursor: pointer;
             background: #c0392b;
-            border: none;
-            color: white;
-            padding: 5px 14px;
-            border-radius: 30px;
-            margin-left: 12px;
-            cursor: pointer;
-        }
-
-        .save-status {
-            background: #27ae60;
-            border: none;
-            color: white;
-            padding: 5px 14px;
-            border-radius: 30px;
-            margin-left: 12px;
-            cursor: pointer;
         }
 
         .station-card {
             background: #f8f9fc;
             border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
             border-left: 4px solid;
             cursor: pointer;
             transition: 0.2s;
@@ -111,23 +126,22 @@
         }
 
         .station-card h4 {
-            margin-bottom: 6px;
-            color: #1a2a3a;
+            margin-bottom: 4px;
+            font-size: 13px;
         }
 
         .station-card p {
-            font-size: 11px;
+            font-size: 10px;
             color: #5a6e7c;
-            margin: 3px 0;
         }
 
         .line-badge {
             display: inline-block;
             padding: 2px 8px;
             border-radius: 20px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         .search-box {
@@ -136,7 +150,7 @@
             border: 1px solid #ddd;
             border-radius: 30px;
             margin-bottom: 15px;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .stats-badge {
@@ -166,321 +180,356 @@
 <div class="main-container">
     <div class="map-container">
         <div class="title">
-            <h1>🚇 Метро Санкт-Петербурга</h1>
-            <p>📌 Клик по станции — поставить/убрать метку | 💾 Метки сохраняются автоматически</p>
+            <h1>🚇 Петербургский метрополитен</h1>
+            <div class="subtitle">Фиксированные подписи (заданы в коде)</div>
+            <div class="legend">
+                <span><span class="legend-color" style="background:#E31E24;"></span> Кировско-Выборгская</span>
+                <span><span class="legend-color" style="background:#0050A0;"></span> Московско-Петроградская</span>
+                <span><span class="legend-color" style="background:#00AA66;"></span> Невско-Василеостровская</span>
+                <span><span class="legend-color" style="background:#F39C12;"></span> Правобережная</span>
+                <span><span class="legend-color" style="background:#8B5A9F;"></span> Фрунзенско-Приморская</span>
+            </div>
         </div>
-        <canvas id="metroCanvas" width="1000" height="760" style="width:100%; height:auto; aspect-ratio:1000/760"></canvas>
+        <canvas id="metroCanvas" width="1100" height="850" style="width:100%; height:auto; aspect-ratio:1100/850"></canvas>
         <div class="info-panel">
-            ✅ <span id="markCount">0</span> станций отмечено
-            <button class="reset-btn" id="resetMarksBtn">🗑 Снять все</button>
-            <button class="save-status" id="exportMarksBtn">📤 Экспорт списка</button>
+            ✅ <span id="markCount">0</span> отмеченных станций
+            <button class="reset-btn" id="resetMarksBtn">🗑 Снять все метки</button>
         </div>
     </div>
 
     <div class="sidebar">
         <h3>📋 Список станций</h3>
-        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск...">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск по названию...">
         <div class="stats-badge" id="sidebarStats"></div>
         <div id="stationsList"></div>
     </div>
 </div>
-<footer>💾 Ваши отметки сохраняются в браузере и не исчезают даже после перезагрузки страницы!</footer>
+<footer>💾 Клик по станции — поставить/убрать зелёную метку. Положение подписей задано в коде и одинаково для всех.</footer>
 
 <script>
-    (function() {
-        // ======================= ДАННЫЕ СТАНЦИЙ =======================
-        const COLORS = { red: "#DA291C", blue: "#0054A6", green: "#009B77", purple: "#8E44AD", orange: "#F39C12" };
+    // ======================= ЦВЕТА ЛИНИЙ =======================
+    const COLORS = {
+        red:    "#E31E24",
+        blue:   "#0050A0",
+        green:  "#00AA66",
+        orange: "#F39C12",
+        purple: "#8B5A9F"
+    };
+    
+    // ======================= ВСЕ СТАНЦИИ С КООРДИНАТАМИ =======================
+    // textOffsetX, textOffsetY — смещение текста относительно станции (x, y)
+    const stations = [
+        // Линия 1 (Красная)
+        { name: "Девяткино", line: "red", x: 680, y: 35, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Гражданский проспект", line: "red", x: 680, y: 70, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Академическая", line: "red", x: 680, y: 105, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Политехническая", line: "red", x: 680, y: 140, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Площадь Мужества", line: "red", x: 680, y: 175, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Лесная", line: "red", x: 680, y: 210, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Выборгская", line: "red", x: 680, y: 245, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Площадь Ленина", line: "red", x: 680, y: 280, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Чернышевская", line: "red", x: 680, y: 315, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Площадь Восстания", line: "red", x: 680, y: 350, transfer: true, textOffsetX: -100, textOffsetY: -10 },
+        { name: "Владимирская", line: "red", x: 610, y: 395, transfer: true, textOffsetX: -70, textOffsetY: -10 },
+        { name: "Пушкинская", line: "red", x: 550, y: 420, transfer: true, textOffsetX: -70, textOffsetY: 6 },
+        { name: "Технологический институт", line: "red", x: 490, y: 450, transfer: true, textOffsetX: -130, textOffsetY: 4 },
+        { name: "Балтийская", line: "red", x: 400, y: 485, transfer: false, textOffsetX: 12, textOffsetY: 5 },
+        { name: "Нарвская", line: "red", x: 340, y: 520, transfer: false, textOffsetX: 12, textOffsetY: 5 },
+        { name: "Кировский завод", line: "red", x: 280, y: 555, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Автово", line: "red", x: 280, y: 590, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Ленинский проспект", line: "red", x: 280, y: 625, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Проспект Ветеранов", line: "red", x: 280, y: 660, transfer: false, textOffsetX: 12, textOffsetY: 4 },
         
-        const stations = [
-            // Красная линия
-            { name: "Девяткино", line: "red", x: 680, y: 30, date: "29.12.1978", type: "крытая наземная", depth: 0, district: "Всеволожский" },
-            { name: "Гражданский проспект", line: "red", x: 640, y: 65, date: "29.12.1978", type: "колонная", depth: 64, district: "Калининский" },
-            { name: "Академическая", line: "red", x: 600, y: 100, date: "31.12.1975", type: "колонная", depth: 64, district: "Калининский" },
-            { name: "Политехническая", line: "red", x: 570, y: 135, date: "31.12.1975", type: "односводчатая", depth: 65, district: "Калининский" },
-            { name: "Площадь Мужества", line: "red", x: 540, y: 170, date: "31.12.1975", type: "односводчатая", depth: 67, district: "Калининский" },
-            { name: "Лесная", line: "red", x: 520, y: 200, date: "22.04.1975", type: "колонная", depth: 64, district: "Выборгский" },
-            { name: "Выборгская", line: "red", x: 520, y: 235, date: "22.04.1975", type: "колонная", depth: 67, district: "Выборгский" },
-            { name: "Площадь Ленина", line: "red", x: 520, y: 270, date: "01.06.1958", type: "пилонная", depth: 71, district: "Калининский" },
-            { name: "Чернышевская", line: "red", x: 520, y: 305, date: "01.09.1958", type: "пилонная", depth: 70, district: "Центральный" },
-            { name: "Площадь Восстания", line: "red", x: 520, y: 340, date: "15.11.1955", type: "пилонная", depth: 58, district: "Центральный" },
-            { name: "Владимирская", line: "red", x: 520, y: 370, date: "15.11.1955", type: "пилонная", depth: 55, district: "Центральный" },
-            { name: "Пушкинская", line: "red", x: 520, y: 400, date: "30.04.1956", type: "пилонная", depth: 57, district: "Адмиралтейский" },
-            { name: "Технологический институт", line: "red", x: 520, y: 440, date: "15.11.1955", type: "колонная", depth: 60, district: "Адмиралтейский" },
-            { name: "Балтийская", line: "red", x: 520, y: 475, date: "15.11.1955", type: "колонная", depth: 44, district: "Адмиралтейский" },
-            { name: "Нарвская", line: "red", x: 520, y: 510, date: "15.11.1955", type: "пилонная", depth: 52, district: "Кировский" },
-            { name: "Кировский завод", line: "red", x: 520, y: 545, date: "15.11.1955", type: "колонная", depth: 50, district: "Кировский" },
-            { name: "Автово", line: "red", x: 520, y: 580, date: "15.11.1955", type: "колонная мелк.", depth: 12, district: "Кировский" },
-            { name: "Ленинский проспект", line: "red", x: 520, y: 615, date: "05.10.1977", type: "колонная мелк.", depth: 8, district: "Кировский" },
-            { name: "Проспект Ветеранов", line: "red", x: 520, y: 650, date: "05.10.1977", type: "колонная мелк.", depth: 8, district: "Кировский" },
-            { name: "Парнас", line: "red", x: 560, y: 25, date: "22.12.2006", type: "крытая наземная", depth: 0, district: "Выборгский" },
-            
-            // Синяя линия
-            { name: "Парк Победы", line: "blue", x: 360, y: 520, date: "29.04.1961", type: "закрытого типа", depth: 35, district: "Московский", closed: true },
-            { name: "Московская", line: "blue", x: 360, y: 555, date: "25.12.1969", type: "закрытого типа", depth: 29, district: "Московский" },
-            { name: "Звёздная", line: "blue", x: 360, y: 590, date: "25.12.1972", type: "закрытого типа", depth: 22, district: "Московский" },
-            { name: "Купчино", line: "blue", x: 360, y: 625, date: "25.12.1972", type: "крытая наземная", depth: 0, district: "Московский" },
-            
-            // Зелёная линия
-            { name: "Беговая", line: "green", x: 150, y: 280, date: "26.05.2018", type: "колонная мелк.", depth: 17, district: "Приморский" },
-            { name: "Зенит", line: "green", x: 200, y: 280, date: "26.05.2018", type: "колонная мелк.", depth: 17, district: "Петроградский" },
-            { name: "Приморская", line: "green", x: 260, y: 280, date: "28.09.1979", type: "колонно-стеновая", depth: 68, district: "Василеостровский" },
-            { name: "Василеостровская", line: "green", x: 320, y: 280, date: "03.11.1967", type: "закрытого типа", depth: 64, district: "Василеостровский" },
-            { name: "Гостиный двор", line: "green", x: 400, y: 280, date: "03.11.1967", type: "закрытого типа", depth: 56, district: "Центральный" },
-            { name: "Маяковская", line: "green", x: 460, y: 280, date: "03.11.1967", type: "закрытого типа", depth: 51, district: "Центральный" },
-            { name: "Площадь Александра Невского", line: "green", x: 530, y: 280, date: "03.11.1967", type: "закрытого типа", depth: 54, district: "Центральный" },
-            { name: "Елизаровская", line: "green", x: 600, y: 280, date: "21.12.1970", type: "закрытого типа", depth: 62, district: "Невский" },
-            { name: "Ломоносовская", line: "green", x: 660, y: 280, date: "21.12.1970", type: "закрытого типа", depth: 65, district: "Невский" },
-            
-            // Фиолетовая линия
-            { name: "Горный институт", line: "purple", x: 340, y: 440, date: "27.12.2024", type: "пилонная", depth: 71, district: "Василеостровский" },
-            { name: "Спасская", line: "purple", x: 520, y: 470, date: "07.03.2009", type: "пилонная", depth: 60, district: "Адмиралтейский" },
-            { name: "Достоевская", line: "purple", x: 580, y: 420, date: "30.12.1991", type: "колонная", depth: 62, district: "Центральный" }
-        ];
-
-        // Рёбра для линий
-        const edges = [
-            { from: "Девяткино", to: "Гражданский проспект", line: "red" },
-            { from: "Гражданский проспект", to: "Академическая", line: "red" },
-            { from: "Академическая", to: "Политехническая", line: "red" },
-            { from: "Политехническая", to: "Площадь Мужества", line: "red" },
-            { from: "Площадь Мужества", to: "Лесная", line: "red" },
-            { from: "Лесная", to: "Выборгская", line: "red" },
-            { from: "Выборгская", to: "Площадь Ленина", line: "red" },
-            { from: "Площадь Ленина", to: "Чернышевская", line: "red" },
-            { from: "Чернышевская", to: "Площадь Восстания", line: "red" },
-            { from: "Площадь Восстания", to: "Владимирская", line: "red" },
-            { from: "Владимирская", to: "Пушкинская", line: "red" },
-            { from: "Пушкинская", to: "Технологический институт", line: "red" },
-            { from: "Технологический институт", to: "Балтийская", line: "red" },
-            { from: "Балтийская", to: "Нарвская", line: "red" },
-            { from: "Нарвская", to: "Кировский завод", line: "red" },
-            { from: "Кировский завод", to: "Автово", line: "red" },
-            { from: "Автово", to: "Ленинский проспект", line: "red" },
-            { from: "Ленинский проспект", to: "Проспект Ветеранов", line: "red" },
-            { from: "Парнас", to: "Девяткино", line: "red" },
-            { from: "Парк Победы", to: "Московская", line: "blue" },
-            { from: "Московская", to: "Звёздная", line: "blue" },
-            { from: "Звёздная", to: "Купчино", line: "blue" },
-            { from: "Беговая", to: "Зенит", line: "green" },
-            { from: "Зенит", to: "Приморская", line: "green" },
-            { from: "Приморская", to: "Василеостровская", line: "green" },
-            { from: "Василеостровская", to: "Гостиный двор", line: "green" },
-            { from: "Гостиный двор", to: "Маяковская", line: "green" },
-            { from: "Маяковская", to: "Площадь Александра Невского", line: "green" },
-            { from: "Площадь Александра Невского", to: "Елизаровская", line: "green" },
-            { from: "Елизаровская", to: "Ломоносовская", line: "green" },
-            { from: "Горный институт", to: "Спасская", line: "purple" },
-            { from: "Спасская", to: "Достоевская", line: "purple" }
-        ];
-
-        // ======================= РАБОТА С LOCALSTORAGE (СОХРАНЕНИЕ МЕТОК) =======================
+        // Линия 2 (Синяя)
+        { name: "Парнас", line: "blue", x: 490, y: 30, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Проспект Просвещения", line: "blue", x: 490, y: 65, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Озерки", line: "blue", x: 490, y: 100, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Удельная", line: "blue", x: 490, y: 135, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Пионерская", line: "blue", x: 490, y: 170, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Чёрная речка", line: "blue", x: 490, y: 205, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Петроградская", line: "blue", x: 490, y: 240, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Горьковская", line: "blue", x: 490, y: 275, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Невский проспект", line: "blue", x: 490, y: 350, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Сенная площадь", line: "blue", x: 490, y: 395, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Технологический институт", line: "blue", x: 490, y: 450, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Фрунзенская", line: "blue", x: 490, y: 485, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Московские ворота", line: "blue", x: 490, y: 520, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Электросила", line: "blue", x: 490, y: 555, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Парк Победы", line: "blue", x: 490, y: 585, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Московская", line: "blue", x: 490, y: 620, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Звёздная", line: "blue", x: 490, y: 655, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Купчино", line: "blue", x: 490, y: 690, transfer: false, textOffsetX: 12, textOffsetY: 4 },
         
-        // Ключ для хранения в localStorage
-        const STORAGE_KEY = 'metro_spb_marks';
+        // Линия 3 (Зелёная)
+        { name: "Беговая", line: "green", x: 90, y: 220, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Зенит", line: "green", x: 90, y: 255, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Приморская", line: "green", x: 90, y: 290, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Василеостровская", line: "green", x: 290, y: 350, transfer: false, textOffsetX: 12, textOffsetY: -10 },
+        { name: "Гостиный двор", line: "green", x: 490, y: 350, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Маяковская", line: "green", x: 680, y: 350, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Площадь Александра Невского", line: "green", x: 750, y: 395, transfer: true, textOffsetX: 20, textOffsetY: 4 },
+        { name: "Елизаровская", line: "green", x: 750, y: 430, transfer: false, textOffsetX: -70, textOffsetY: 4 },
+        { name: "Ломоносовская", line: "green", x: 750, y: 465, transfer: false, textOffsetX: -70, textOffsetY: 4 },
+        { name: "Пролетарская", line: "green", x: 750, y: 500, transfer: false, textOffsetX: -70, textOffsetY: 4 },
+        { name: "Обухово", line: "green", x: 750, y: 535, transfer: false, textOffsetX: -70, textOffsetY: 4 },
+        { name: "Рыбацкое", line: "green", x: 750, y: 570, transfer: false, textOffsetX: -70, textOffsetY: 4 },
         
-        // Загрузка сохранённых меток
-        function loadMarksFromStorage() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const marksArray = JSON.parse(saved);
-                    return new Set(marksArray);
-                } catch(e) {
-                    console.error('Ошибка загрузки меток:', e);
-                    return new Set();
-                }
+        // Линия 4 (Оранжевая) — Горный институт соединён напрямую со Спасской
+        { name: "Горный институт", line: "orange", x: 300, y: 395, transfer: false, textOffsetX: -30, textOffsetY: 15 },
+        { name: "Спасская", line: "orange", x: 490, y: 395, transfer: true, textOffsetX: 20, textOffsetY: 10 },
+        { name: "Достоевская", line: "orange", x: 610, y: 395, transfer: true, textOffsetX: -30, textOffsetY: 15 },
+        { name: "Лиговский проспект", line: "orange", x: 680, y: 395, transfer: false, textOffsetX: -30, textOffsetY: 15 },
+        { name: "Площадь Александра Невского", line: "orange", x: 750, y: 395, transfer: true, textOffsetX: 20, textOffsetY: 4 },
+        { name: "Новочеркасская", line: "orange", x: 800, y: 440, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Ладожская", line: "orange", x: 800, y: 485, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Проспект Большевиков", line: "orange", x: 800, y: 530, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Улица Дыбенко", line: "orange", x: 800, y: 575, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        
+        // Линия 5 (Фиолетовая)
+        { name: "Комендантский проспект", line: "purple", x: 200, y: 180, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Старая Деревня", line: "purple", x: 200, y: 215, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Крестовский остров", line: "purple", x: 200, y: 240, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Чкаловская", line: "purple", x: 200, y: 275, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Спортивная", line: "purple", x: 310, y: 370, transfer: false, textOffsetX: 12, textOffsetY: -4 },
+        { name: "Адмиралтейская", line: "purple", x: 400, y: 390, transfer: false, textOffsetX: 12, textOffsetY: -4 },
+        { name: "Садовая", line: "purple", x: 480, y: 400, transfer: true, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Звенигородская", line: "purple", x: 550, y: 420, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Обводный канал", line: "purple", x: 580, y: 460, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Волковская", line: "purple", x: 610, y: 520, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Бухарестская", line: "purple", x: 610, y: 555, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Международная", line: "purple", x: 610, y: 590, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Проспект Славы", line: "purple", x: 610, y: 625, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Дунайская", line: "purple", x: 610, y: 660, transfer: false, textOffsetX: 12, textOffsetY: 4 },
+        { name: "Шушары", line: "purple", x: 610, y: 695, transfer: false, textOffsetX: 12, textOffsetY: 4 }
+    ];
+    
+    // ======================= РЁБРА ДЛЯ ЛИНИЙ =======================
+    const lineOrders = {
+        red: ["Девяткино","Гражданский проспект","Академическая","Политехническая","Площадь Мужества","Лесная","Выборгская","Площадь Ленина","Чернышевская","Площадь Восстания","Владимирская","Пушкинская","Технологический институт","Балтийская","Нарвская","Кировский завод","Автово","Ленинский проспект","Проспект Ветеранов"],
+        blue: ["Парнас","Проспект Просвещения","Озерки","Удельная","Пионерская","Чёрная речка","Петроградская","Горьковская","Невский проспект","Сенная площадь","Технологический институт","Фрунзенская","Московские ворота","Электросила","Парк Победы","Московская","Звёздная","Купчино"],
+        green: ["Беговая","Зенит","Приморская","Василеостровская","Гостиный двор","Маяковская","Площадь Александра Невского","Елизаровская","Ломоносовская","Пролетарская","Обухово","Рыбацкое"],
+        orange: ["Горный институт","Спасская","Достоевская","Лиговский проспект","Площадь Александра Невского","Новочеркасская","Ладожская","Проспект Большевиков","Улица Дыбенко"],
+        purple: ["Комендантский проспект","Старая Деревня","Крестовский остров","Чкаловская","Спортивная","Адмиралтейская","Садовая","Звенигородская","Обводный канал","Волковская","Бухарестская","Международная","Проспект Славы","Дунайская","Шушары"]
+    };
+    
+    const edges = [];
+    for (const [lineId, order] of Object.entries(lineOrders)) {
+        for (let i = 0; i < order.length - 1; i++) {
+            edges.push({ from: order[i], to: order[i+1], line: lineId });
+        }
+    }
+    
+    // ======================= ХРАНЕНИЕ МЕТОК =======================
+    const MARKS_KEY = 'metro_spb_my_marks';
+    
+    function loadMarks() {
+        const saved = localStorage.getItem(MARKS_KEY);
+        if (saved) {
+            try {
+                return new Set(JSON.parse(saved));
+            } catch(e) {
+                return new Set();
             }
-            return new Set();
+        }
+        return new Set();
+    }
+    
+    function saveMarks(marksSet) {
+        localStorage.setItem(MARKS_KEY, JSON.stringify(Array.from(marksSet)));
+    }
+    
+    let markedStations = loadMarks();
+    
+    // ======================= ОТРИСОВКА КАРТЫ =======================
+    const canvas = document.getElementById('metroCanvas');
+    const ctx = canvas.getContext('2d');
+    const markCountSpan = document.getElementById('markCount');
+    
+    function drawCheckmark(x, y) {
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = '#2ecc71';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y);
+        ctx.lineTo(x - 1.5, y + 3);
+        ctx.lineTo(x + 4, y - 2.5);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+    }
+    
+    function drawTransferRing(x, y) {
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 11, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+    }
+    
+    function renderMap() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FEF8EA';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Рисуем линии
+        for (let edge of edges) {
+            const fromSt = stations.find(s => s.name === edge.from);
+            const toSt = stations.find(s => s.name === edge.to);
+            if (fromSt && toSt) {
+                ctx.beginPath();
+                ctx.moveTo(fromSt.x, fromSt.y);
+                ctx.lineTo(toSt.x, toSt.y);
+                ctx.strokeStyle = COLORS[edge.line];
+                ctx.lineWidth = 5.5;
+                ctx.stroke();
+            }
         }
         
-        // Сохранение меток в localStorage
-        function saveMarksToStorage(marksSet) {
-            const marksArray = Array.from(marksSet);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(marksArray));
-        }
-        
-        // Инициализируем метки из localStorage
-        let markedStations = loadMarksFromStorage();
-        
-        // ======================= ОТРИСОВКА КАРТЫ =======================
-        const canvas = document.getElementById('metroCanvas');
-        const ctx = canvas.getContext('2d');
-        const markCountSpan = document.getElementById('markCount');
-        
-        function drawCheckmark(x, y) {
+        // Рисуем станции
+        for (let st of stations) {
+            // Пропускаем, если имя пустое (на случай, если осталась)
+            if (!st.name) continue;
+            
+            // Основной кружок
             ctx.beginPath();
-            ctx.arc(x, y, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = '#2ecc71';
+            ctx.arc(st.x, st.y, 6.5, 0, 2 * Math.PI);
+            ctx.fillStyle = COLORS[st.line];
             ctx.fill();
             ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.8;
+            ctx.lineWidth = 2;
             ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x - 4, y);
-            ctx.lineTo(x - 1.5, y + 3);
-            ctx.lineTo(x + 4, y - 2.5);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2.2;
-            ctx.stroke();
-        }
-        
-        function renderMap() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#FEF8EA';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Рисуем линии
-            for (let edge of edges) {
-                const fromSt = stations.find(s => s.name === edge.from);
-                const toSt = stations.find(s => s.name === edge.to);
-                if (fromSt && toSt) {
-                    ctx.beginPath();
-                    ctx.moveTo(fromSt.x, fromSt.y);
-                    ctx.lineTo(toSt.x, toSt.y);
-                    ctx.strokeStyle = COLORS[edge.line];
-                    ctx.lineWidth = 6;
-                    ctx.stroke();
-                }
+            // Если пересадочная — рисуем двойное кольцо
+            if (st.transfer) {
+                drawTransferRing(st.x, st.y);
             }
             
-            // Рисуем станции
-            for (let st of stations) {
-                ctx.beginPath();
-                ctx.arc(st.x, st.y, 7, 0, 2 * Math.PI);
-                ctx.fillStyle = COLORS[st.line];
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Рисуем метку, если станция отмечена
-                if (markedStations.has(st.name)) {
-                    drawCheckmark(st.x, st.y);
-                }
-                
-                // Подпись названия
-                ctx.font = '11px "Segoe UI", "Roboto", Arial';
-                ctx.fillStyle = '#1f2d3d';
-                let offsetX = (st.x > 800) ? -75 : 12;
-                if (st.name.length > 18) offsetX = -85;
-                ctx.fillText(st.name.length > 20 ? st.name.slice(0, 18) + "…" : st.name, st.x + offsetX, st.y + 4);
+            // Если отмечена — рисуем зелёную галочку
+            if (markedStations.has(st.name)) {
+                drawCheckmark(st.x, st.y);
             }
             
-            // Обновляем счётчик
-            markCountSpan.innerText = markedStations.size;
+            // Подпись с фиксированным смещением из кода
+            ctx.font = '10px "Segoe UI", "Roboto"';
+            ctx.fillStyle = '#1f2d3d';
+            const offsetX = st.textOffsetX !== undefined ? st.textOffsetX : 12;
+            const offsetY = st.textOffsetY !== undefined ? st.textOffsetY : 4;
+            ctx.fillText(st.name.length > 22 ? st.name.slice(0, 20) + "…" : st.name, st.x + offsetX, st.y + offsetY);
         }
         
-        function showStationInfo(station) {
-            let status = station.closed ? "🔴 ЗАКРЫТА" : "✅ Действует";
-            alert(`🚉 ${station.name}\n📅 Открыта: ${station.date}\n🏗️ Тип: ${station.type}\n📏 Глубина: ${station.depth} м\n📍 Район: ${station.district}\n${status}`);
+        markCountSpan.innerText = markedStations.size;
+        document.getElementById('sidebarStats').innerHTML = `📌 Отмечено: ${markedStations.size} | Всего: ${stations.length}`;
+    }
+    
+    function toggleMark(stationName) {
+        if (markedStations.has(stationName)) {
+            markedStations.delete(stationName);
+        } else {
+            markedStations.add(stationName);
         }
-        
-        function toggleMark(stationName) {
-            if (markedStations.has(stationName)) {
-                markedStations.delete(stationName);
-            } else {
-                markedStations.add(stationName);
-            }
-            // Сохраняем в localStorage
-            saveMarksToStorage(markedStations);
-            renderMap();
-            updateSidebar();
-        }
-        
-        function resetAllMarks() {
-            markedStations.clear();
-            saveMarksToStorage(markedStations);
-            renderMap();
-            updateSidebar();
-        }
-        
-        function exportMarksList() {
-            const marksArray = Array.from(markedStations);
-            if (marksArray.length === 0) {
-                alert("Нет отмеченных станций");
-                return;
-            }
-            const text = marksArray.join("\n");
-            // Создаём временный элемент для копирования
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            alert(`✅ Список отмеченных станций скопирован в буфер обмена!\n\n${marksArray.length} станций:\n${marksArray.join(", ")}`);
-        }
-        
-        // Обработчик клика по canvas
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
-            
-            for (let st of stations) {
-                const dx = mouseX - st.x;
-                const dy = mouseY - st.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 12) {
-                    if (e.shiftKey) {
-                        showStationInfo(st);
-                    } else {
-                        toggleMark(st.name);
-                    }
-                    break;
-                }
-            }
-        });
-        
-        // Кнопки
-        document.getElementById('resetMarksBtn').addEventListener('click', resetAllMarks);
-        document.getElementById('exportMarksBtn').addEventListener('click', exportMarksList);
-        
-        // Боковая панель
-        function updateSidebar() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = stations.filter(s => 
-                s.name.toLowerCase().includes(searchValue) || 
-                s.district.toLowerCase().includes(searchValue)
-            );
-            
-            document.getElementById('sidebarStats').innerHTML = `📌 Отмечено: ${markedStations.size} | Всего: ${stations.length}`;
-            
-            let html = '';
-            for (let st of filtered) {
-                const lineName = { red: "Красная", blue: "Синяя", green: "Зелёная", purple: "Фиолетовая", orange: "Красносельская" }[st.line];
-                const isMarked = markedStations.has(st.name);
-                html += `
-                    <div class="station-card" style="border-left-color: ${COLORS[st.line]}" onclick="window.dispatchEvent(new CustomEvent('selectStation', {detail: '${st.name.replace(/'/g, "\\'")}'}))">
-                        <h4>${st.name} ${st.closed ? '⛔' : ''} ${isMarked ? '✅' : ''}</h4>
-                        <p>📅 ${st.date} | ${st.type}</p>
-                        <p>📍 ${st.district} | ${lineName} линия</p>
-                        <span class="line-badge" style="background: ${COLORS[st.line]}; color: white">${lineName}</span>
-                    </div>
-                `;
-            }
-            document.getElementById('stationsList').innerHTML = html || '<p>🚫 Ничего не найдено</p>';
-        }
-        
-        // Обработка клика по карточке
-        window.addEventListener('selectStation', (e) => {
-            const station = stations.find(s => s.name === e.detail);
-            if (station) toggleMark(station.name);
-        });
-        
-        document.getElementById('searchInput').addEventListener('input', updateSidebar);
-        
-        // Запуск
+        saveMarks(markedStations);
         renderMap();
         updateSidebar();
-        
-        // Сообщение о восстановлении меток
-        if (markedStations.size > 0) {
-            console.log(`✅ Восстановлено ${markedStations.size} сохранённых меток`);
+    }
+    
+    function resetAllMarks() {
+        if (confirm('Снять все ваши метки?')) {
+            markedStations.clear();
+            saveMarks(markedStations);
+            renderMap();
+            updateSidebar();
         }
-    })();
+    }
+    
+    // ======================= ОБРАБОТЧИКИ =======================
+    function getMouseCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        let clientX, clientY;
+        
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+    
+    canvas.addEventListener('click', (e) => {
+        const mouse = getMouseCoordinates(e);
+        for (let st of stations) {
+            if (!st.name) continue;
+            const dx = mouse.x - st.x;
+            const dy = mouse.y - st.y;
+            if (Math.hypot(dx, dy) < 12) {
+                toggleMark(st.name);
+                return;
+            }
+        }
+    });
+    
+    // Поддержка касаний для мобильных
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            const mouse = getMouseCoordinates(e);
+            for (let st of stations) {
+                if (!st.name) continue;
+                const dx = mouse.x - st.x;
+                const dy = mouse.y - st.y;
+                if (Math.hypot(dx, dy) < 12) {
+                    toggleMark(st.name);
+                    return;
+                }
+            }
+        }
+    });
+    
+    document.getElementById('resetMarksBtn').addEventListener('click', resetAllMarks);
+    
+    function updateSidebar() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = stations.filter(s => s.name && s.name.toLowerCase().includes(searchValue));
+        
+        const lineNames = { red: "Красная", blue: "Синяя", green: "Зелёная", orange: "Оранжевая", purple: "Фиолетовая" };
+        
+        let html = '';
+        for (let st of filtered) {
+            if (!st.name) continue;
+            const isMarked = markedStations.has(st.name);
+            html += `
+                <div class="station-card" style="border-left-color: ${COLORS[st.line]}" onclick="window.dispatchEvent(new CustomEvent('selectStation', {detail: '${st.name.replace(/'/g, "\\'")}'}))">
+                    <h4>${st.name} ${isMarked ? '✅' : '◻️'} ${st.transfer ? '🔄' : ''}</h4>
+                    <p>${lineNames[st.line]} линия</p>
+                    <span class="line-badge" style="background: ${COLORS[st.line]}; color: white">${lineNames[st.line]}</span>
+                </div>
+            `;
+        }
+        document.getElementById('stationsList').innerHTML = html || '<p>🚫 Ничего не найдено</p>';
+    }
+    
+    window.addEventListener('selectStation', (e) => toggleMark(e.detail));
+    document.getElementById('searchInput').addEventListener('input', updateSidebar);
+    
+    // Запуск
+    renderMap();
+    updateSidebar();
 </script>
 </body>
 </html>
